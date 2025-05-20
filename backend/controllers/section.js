@@ -31,24 +31,34 @@ exports.createSection = async (req, res) => {
         // Get updated course details with sections and subsections
         const [courseDetails] = await connection.execute(
             `SELECT c.*, 
-                    JSON_ARRAYAGG(
-                        JSON_OBJECT(
-                            'id', s.id,
-                            'sectionName', s.sectionName,
-                            'subSection', (
-                                SELECT JSON_ARRAYAGG(
+                    COALESCE(
+                        JSON_ARRAYAGG(
+                            CASE 
+                                WHEN s.id IS NOT NULL THEN
                                     JSON_OBJECT(
-                                        'id', ss.id,
-                                        'title', ss.title,
-                                        'timeDuration', ss.timeDuration,
-                                        'description', ss.description,
-                                        'videoUrl', ss.videoUrl
+                                        'id', s.id,
+                                        'sectionName', s.sectionName,
+                                        'subSection', COALESCE(
+                                            (
+                                                SELECT JSON_ARRAYAGG(
+                                                    JSON_OBJECT(
+                                                        'id', ss.id,
+                                                        'title', ss.title,
+                                                        'timeDuration', ss.timeDuration,
+                                                        'description', ss.description,
+                                                        'videoUrl', ss.videoUrl
+                                                    )
+                                                )
+                                                FROM subSections ss
+                                                WHERE ss.sectionId = s.id
+                                            ),
+                                            JSON_ARRAY()
+                                        )
                                     )
-                                )
-                                FROM subSections ss
-                                WHERE ss.sectionId = s.id
-                            )
-                        )
+                                ELSE NULL
+                            END
+                        ),
+                        JSON_ARRAY()
                     ) as courseContent
              FROM courses c
              LEFT JOIN sections s ON c.id = s.courseId
@@ -66,14 +76,19 @@ exports.createSection = async (req, res) => {
 
         // Parse the JSON strings
         const course = courseDetails[0];
-        if (course.courseContent) {
-            course.courseContent = JSON.parse(course.courseContent);
-        }
-        if (course.tag) {
-            course.tag = JSON.parse(course.tag);
-        }
-        if (course.instructions) {
-            course.instructions = JSON.parse(course.instructions);
+        try {
+            if (course.courseContent && typeof course.courseContent === 'string') {
+                course.courseContent = JSON.parse(course.courseContent);
+            }
+            if (course.tag && typeof course.tag === 'string') {
+                course.tag = JSON.parse(course.tag);
+            }
+            if (course.instructions && typeof course.instructions === 'string') {
+                course.instructions = JSON.parse(course.instructions);
+            }
+        } catch (parseError) {
+            console.log('Error parsing JSON:', parseError);
+            // If parsing fails, keep the original value
         }
 
         res.status(200).json({
@@ -121,24 +136,34 @@ exports.updateSection = async (req, res) => {
         // Get updated course details with sections and subsections
         const [courseDetails] = await connection.execute(
             `SELECT c.*, 
-                    JSON_ARRAYAGG(
-                        JSON_OBJECT(
-                            'id', s.id,
-                            'sectionName', s.sectionName,
-                            'subSections', (
-                                SELECT JSON_ARRAYAGG(
+                    COALESCE(
+                        JSON_ARRAYAGG(
+                            CASE 
+                                WHEN s.id IS NOT NULL THEN
                                     JSON_OBJECT(
-                                        'id', ss.id,
-                                        'title', ss.title,
-                                        'timeDuration', ss.timeDuration,
-                                        'description', ss.description,
-                                        'videoUrl', ss.videoUrl
+                                        'id', s.id,
+                                        'sectionName', s.sectionName,
+                                        'subSections', COALESCE(
+                                            (
+                                                SELECT JSON_ARRAYAGG(
+                                                    JSON_OBJECT(
+                                                        'id', ss.id,
+                                                        'title', ss.title,
+                                                        'timeDuration', ss.timeDuration,
+                                                        'description', ss.description,
+                                                        'videoUrl', ss.videoUrl
+                                                    )
+                                                )
+                                                FROM subSections ss
+                                                WHERE ss.sectionId = s.id
+                                            ),
+                                            JSON_ARRAY()
+                                        )
                                     )
-                                )
-                                FROM subSections ss
-                                WHERE ss.sectionId = s.id
-                            )
-                        )
+                                ELSE NULL
+                            END
+                        ),
+                        JSON_ARRAY()
                     ) as courseContent
              FROM courses c
              LEFT JOIN sections s ON c.id = s.courseId
@@ -156,8 +181,13 @@ exports.updateSection = async (req, res) => {
 
         // Parse the JSON strings in courseContent
         const course = courseDetails[0];
-        if (course.courseContent) {
-            course.courseContent = JSON.parse(course.courseContent);
+        try {
+            if (course.courseContent && typeof course.courseContent === 'string') {
+                course.courseContent = JSON.parse(course.courseContent);
+            }
+        } catch (parseError) {
+            console.log('Error parsing JSON:', parseError);
+            // If parsing fails, keep the original value
         }
 
         res.status(200).json({
@@ -215,4 +245,3 @@ exports.deleteSection = async (req, res) => {
         })
     }
 }
-

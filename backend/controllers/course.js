@@ -17,11 +17,18 @@ exports.createCourse = async (req, res) => {
         let { courseName, courseDescription, whatYouWillLearn, price, category, instructions: _instructions, status, tag: _tag } = req.body;
 
         // Convert the tag and instructions from stringified Array to Array
-        const tag = typeof _tag === 'string' ? JSON.parse(_tag) : _tag;
-        const instructions = typeof _instructions === 'string' ? JSON.parse(_instructions) : _instructions;
+        const tag = typeof _tag === 'string' ? JSON.parse(_tag) : _tag || [];
+        const instructions = typeof _instructions === 'string' ? JSON.parse(_instructions) : _instructions || [];
 
         // get thumbnail of course
         const thumbnail = req.files?.thumbnailImage;
+
+        // Log request details for debugging
+        console.log('Request details:', {
+            body: req.body,
+            files: req.files,
+            thumbnail: thumbnail
+        });
 
         // validation
         if (!courseName || !courseDescription || !whatYouWillLearn || !price
@@ -32,9 +39,8 @@ exports.createCourse = async (req, res) => {
             });
         }
 
-        if (!status || status === undefined) {
-            status = "Draft";
-        }
+        // Set default status if not provided
+        status = status || "Draft";
 
         // check current user is instructor or not
         const instructorId = req.user.id;
@@ -49,8 +55,11 @@ exports.createCourse = async (req, res) => {
         }
 
         // upload thumbnail to cloudinary
+        console.log('Uploading thumbnail to Cloudinary...');
         const thumbnailDetails = await uploadImageToCloudinary(thumbnail, process.env.FOLDER_NAME || "LMS");
-        if (!thumbnailDetails) {
+        console.log('Thumbnail upload result:', thumbnailDetails);
+
+        if (!thumbnailDetails || !thumbnailDetails.secure_url) {
             return res.status(500).json({
                 success: false,
                 message: 'Failed to upload thumbnail'
@@ -79,7 +88,10 @@ exports.createCourse = async (req, res) => {
         });
     } catch (error) {
         console.log('Error while creating new course');
-        console.log(error);
+        console.log('Error details:', {
+            message: error.message,
+            stack: error.stack
+        });
         res.status(500).json({
             success: false,
             message: error.message || 'Error while creating new course'

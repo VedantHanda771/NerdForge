@@ -17,6 +17,11 @@ export default function Upload({ name, label, register, setValue, errors, video 
   const onDrop = (acceptedFiles) => {
     const file = acceptedFiles[0]
     if (file) {
+      // Validate file size (max 100MB for videos)
+      if (video && file.size > 100 * 1024 * 1024) {
+        alert('Video file size must be less than 100MB')
+        return
+      }
       previewFile(file)
       setSelectedFile(file)
     }
@@ -27,6 +32,7 @@ export default function Upload({ name, label, register, setValue, errors, video 
       ? { "image/*": [".jpeg", ".jpg", ".png"] }
       : { "video/*": [".mp4"] },
     onDrop,
+    maxSize: video ? 100 * 1024 * 1024 : 5 * 1024 * 1024, // 100MB for videos, 5MB for images
   })
 
   const previewFile = (file) => {
@@ -39,13 +45,22 @@ export default function Upload({ name, label, register, setValue, errors, video 
   }
 
   useEffect(() => {
-    register(name, { required: true })
-  }, [register])
-
+    register(name, { 
+      required: true,
+      validate: (value) => {
+        if (!value && !viewData && !editData) {
+          return `${label} is required`
+        }
+        return true
+      }
+    })
+  }, [register, name, label, viewData, editData])
 
   useEffect(() => {
-    setValue(name, selectedFile)
-  }, [selectedFile, setValue])
+    if (selectedFile) {
+      setValue(name, selectedFile)
+    }
+  }, [selectedFile, setValue, name])
 
   return (
     <div className="flex flex-col space-y-2">
@@ -100,6 +115,7 @@ export default function Upload({ name, label, register, setValue, errors, video 
             <ul className="mt-10 flex list-disc justify-between space-x-12 text-center  text-xs text-richblack-200">
               <li>Aspect ratio 16:9</li>
               <li>Recommended size 1024x576</li>
+              <li>{video ? "Max size: 100MB" : "Max size: 5MB"}</li>
             </ul>
           </div>
         )}
@@ -107,7 +123,7 @@ export default function Upload({ name, label, register, setValue, errors, video 
 
       {errors[name] && (
         <span className="ml-2 text-xs tracking-wide text-pink-200">
-          {label} is required
+          {errors[name].message || `${label} is required`}
         </span>
       )}
     </div>

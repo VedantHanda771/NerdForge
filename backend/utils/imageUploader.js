@@ -116,10 +116,28 @@ const app = express();
 
 exports.uploadImageToCloudinary = async (file, folder, height, quality) => {
     try {
-        if (!file || !file.tempFilePath) {
-            console.error("Missing file or tempFilePath:", file);
-            throw new Error('File upload failed: No file or tempFilePath provided');
+        // Validate file
+        if (!file) {
+            throw new Error('No file provided');
         }
+
+        if (!file.data) {
+            console.error('File data is missing:', file);
+            throw new Error('File data is missing');
+        }
+
+        if (!file.mimetype) {
+            console.error('File mimetype is missing:', file);
+            throw new Error('File mimetype is missing');
+        }
+
+        // Log file details for debugging
+        console.log('File details:', {
+            name: file.name,
+            mimetype: file.mimetype,
+            size: file.size,
+            dataLength: file.data.length
+        });
 
         const options = {
             folder: folder || "user_images",
@@ -129,11 +147,25 @@ exports.uploadImageToCloudinary = async (file, folder, height, quality) => {
         if (height) options.height = height;
         if (quality) options.quality = quality;
 
-        const uploadResult = await cloudinary.uploader.upload(file.tempFilePath, options);
-        return uploadResult;
+        // Convert file buffer to base64
+        const base64Data = `data:${file.mimetype};base64,${file.data.toString('base64')}`;
+        
+        // Upload to Cloudinary
+        const result = await cloudinary.uploader.upload(base64Data, options);
+        
+        if (!result || !result.secure_url) {
+            console.error('Cloudinary upload result is invalid:', result);
+            throw new Error('Invalid upload result from Cloudinary');
+        }
+
+        return result;
     } catch (error) {
-        console.error("Error while uploading image to Cloudinary:", error);
-        throw new Error(`Image upload failed: ${error.message}`);
+        console.error("Error while uploading to Cloudinary:", {
+            error: error,
+            message: error.message,
+            stack: error.stack
+        });
+        throw new Error(`Upload failed: ${error.message || 'Unknown error'}`);
     }
 };
 
