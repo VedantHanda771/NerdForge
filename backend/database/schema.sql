@@ -1,0 +1,116 @@
+-- Create database if not exists
+CREATE DATABASE IF NOT EXISTS study_notion;
+USE study_notion;
+
+-- Users table
+CREATE TABLE IF NOT EXISTS users (
+    id VARCHAR(36) PRIMARY KEY,
+    firstName VARCHAR(50) NOT NULL,
+    lastName VARCHAR(50) NOT NULL,
+    email VARCHAR(100) UNIQUE NOT NULL,
+    password VARCHAR(255) NOT NULL,
+    accountType ENUM('Student', 'Instructor', 'Admin') NOT NULL,
+    image VARCHAR(255),
+    token VARCHAR(255),
+    resetPasswordExpires DATETIME,
+    createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- Profile table
+CREATE TABLE IF NOT EXISTS profiles (
+    id VARCHAR(36) PRIMARY KEY,
+    userId VARCHAR(36) NOT NULL,
+    dateOfBirth DATE,
+    gender ENUM('Male', 'Female', 'Other'),
+    about TEXT,
+    contactNumber VARCHAR(15),
+    createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- Category table
+CREATE TABLE IF NOT EXISTS categories (
+    id VARCHAR(36) PRIMARY KEY,
+    name VARCHAR(50) NOT NULL,
+    description TEXT,
+    createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- Course table
+CREATE TABLE IF NOT EXISTS courses (
+    id VARCHAR(36) PRIMARY KEY,
+    courseName VARCHAR(100) NOT NULL,
+    courseDescription TEXT,
+    whatYouWillLearn TEXT,
+    price DECIMAL(10,2) NOT NULL,
+    thumbnail VARCHAR(255),
+    tag JSON,
+    instructions JSON,
+    categoryId VARCHAR(36),
+    instructorId VARCHAR(36) NOT NULL,
+    status ENUM('Draft', 'Published') DEFAULT 'Draft',
+    createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (categoryId) REFERENCES categories(id) ON DELETE SET NULL,
+    FOREIGN KEY (instructorId) REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- Section table
+CREATE TABLE IF NOT EXISTS sections (
+    id VARCHAR(36) PRIMARY KEY,
+    sectionName VARCHAR(100) NOT NULL,
+    courseId VARCHAR(36) NOT NULL,
+    createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (courseId) REFERENCES courses(id) ON DELETE CASCADE
+);
+
+-- SubSection table
+CREATE TABLE IF NOT EXISTS subSections (
+    id VARCHAR(36) PRIMARY KEY,
+    title VARCHAR(100) NOT NULL,
+    timeDuration INT,
+    description TEXT,
+    videoUrl VARCHAR(255),
+    sectionId VARCHAR(36) NOT NULL,
+    createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (sectionId) REFERENCES sections(id) ON DELETE CASCADE
+);
+
+-- CourseProgress table
+CREATE TABLE IF NOT EXISTS courseProgress (
+    id VARCHAR(36) PRIMARY KEY,
+    userId VARCHAR(36) NOT NULL,
+    courseId VARCHAR(36) NOT NULL,
+    completedVideos JSON,
+    createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (courseId) REFERENCES courses(id) ON DELETE CASCADE
+);
+
+-- RatingAndReview table
+CREATE TABLE IF NOT EXISTS ratingAndReviews (
+    id VARCHAR(36) PRIMARY KEY,
+    userId VARCHAR(36) NOT NULL,
+    courseId VARCHAR(36) NOT NULL,
+    rating DECIMAL(2,1) NOT NULL,
+    review TEXT,
+    createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (courseId) REFERENCES courses(id) ON DELETE CASCADE
+);
+
+-- OTP table
+CREATE TABLE IF NOT EXISTS otps (
+    id VARCHAR(36) PRIMARY KEY,
+    email VARCHAR(100) NOT NULL,
+    otp VARCHAR(6) NOT NULL,
+    createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    expiresAt TIMESTAMP NOT NULL
+); 
